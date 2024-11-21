@@ -4,25 +4,26 @@ import math, time
 
 
 # Helper Function: Calculate Euclidean Distance
-def euclidean_distance(loc1, loc2):
-    return math.sqrt((loc1[0] - loc2[0]) ** 2 + (loc1[1] - loc2[1]) ** 2)
+def haversine_distance(loc1, loc2):
+    R = 6371.0  # Radius of Earth in kilometers
+    dlat = math.radians(loc2[0] - loc1[0])
+    dlon = math.radians(loc2[1] - loc1[1])
+    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(loc1[0])) * math.cos(math.radians(loc2[0])) * math.sin(
+        dlon / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c  # Distance in kilometers
 
 
 # Input Data: Tasks and Agents
 tasks = [
-    {"id": 0, "skill": "A", "location": (0, 0), "duration": 50},
-    {"id": 1, "skill": "B", "location": (2, 2), "duration": 90},
-    {"id": 2, "skill": "A", "location": (3, 1), "duration": 50},
-    {"id": 3, "skill": "A", "location": (1, 3), "duration": 90},
-    {"id": 4, "skill": "B", "location": (0, 0), "duration": 50},
-    {"id": 5, "skill": "B", "location": (0, 0), "duration": 50},
+    {"id": 0, "skill": "A", "location": (12.971598, 77.594566), "pincode": 560001, "duration": 50},  # Bangalore
+    {"id": 1, "skill": "A", "location": (12.295810, 76.639381), "pincode": 560001, "duration": 50},  # Mysore
+    {"id": 2, "skill": "A", "location": (13.082680, 80.270721), "pincode": 560001, "duration": 50},  # Chennai
 ]
 
 agents = [
-    {"id": 0, "skills": {"A"}, "location": (1, 1), "availability": 120, "allowed_locations": [(0, 0), (1, 3)]},
-    {"id": 1, "skills": {"B"}, "location": (4, 4), "availability": 120, "allowed_locations": [(2, 2), (3, 1)]},
-    {"id": 2, "skills": {"A", "B"}, "location": (0, 0), "availability": 120,
-     "allowed_locations": [(0, 0), (2, 2), (3, 1)]},
+    {"id": 0, "skills": {"A"}, "location": (12.914142, 74.856033), "availability": 120, "allowed_locations": [560001]},
+    # Mangalore
 ]
 
 start_time = time.time()
@@ -31,7 +32,10 @@ start_time = time.time()
 locations = [agent["location"] for agent in agents] + [task["location"] for task in tasks]
 
 # Compute Distance Matrix
-distance_matrix = [[euclidean_distance(loc1, loc2) for loc2 in locations] for loc1 in locations]
+distance_matrix = [[haversine_distance(loc1, loc2) for loc2 in locations] for loc1 in locations]
+
+# log distance matrix
+print(distance_matrix)
 
 # Number of Agents
 num_agents = len(agents)
@@ -75,9 +79,9 @@ routing.AddDimensionWithVehicleCapacity(
 # Skill and Location Matching Constraint
 for task_index, task in enumerate(tasks, start=num_agents):
     task_skill = task["skill"]
-    task_location = task["location"]
+    task_pincode = task["pincode"]
     for agent_index, agent in enumerate(agents):
-        if not (task_skill in agent["skills"] and task_location in agent["allowed_locations"]):
+        if not (task_skill in agent["skills"] and task_pincode in agent["allowed_locations"]):
             routing.VehicleVar(manager.NodeToIndex(task_index)).RemoveValue(agent_index)
 
 # Allow Unassigned Tasks with Penalty
@@ -109,7 +113,8 @@ if solution:
                 total_duration += tasks[node - num_agents]["duration"]
             previous_index = index
             index = solution.Value(routing.NextVar(index))
-            total_distance += distance_matrix[manager.IndexToNode(previous_index)][manager.IndexToNode(index)]
+            if not routing.IsEnd(index):
+                total_distance += distance_matrix[manager.IndexToNode(previous_index)][manager.IndexToNode(index)]
 
         # Get the end location
         end_node = manager.IndexToNode(previous_index)
@@ -117,7 +122,7 @@ if solution:
 
         print(f"Agent {agent_index}:")
         print(f"  Assigned Tasks: {route}")
-        print(f"  Total Distance: {total_distance:.2f}")
+        print(f"  Total Distance: {total_distance:.2f} kms")  # in kilometers
         print(f"  Total Duration: {total_duration} minutes")
         print(f"  End Location: {end_location}")
 
