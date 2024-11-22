@@ -1,7 +1,9 @@
-# File: task_assignment_solver.py
-
 import math
 import logging
+import os
+import psutil
+import threading
+import time
 from typing import List, Tuple, Dict, Any
 from ortools.constraint_solver import routing_enums_pb2, pywrapcp
 
@@ -41,6 +43,24 @@ def validate_input(tasks: List[Dict[str, Any]], agents: List[Dict[str, Any]]) ->
 def build_distance_matrix(locations: List[Tuple[float, float]]) -> List[List[float]]:
     """Compute the distance matrix between all locations."""
     return [[haversine_distance(loc1, loc2) for loc2 in locations] for loc1 in locations]
+
+
+# Resource Monitoring
+def monitor_usage(interval: float = 1.0, threshold: float = 80.0) -> None:
+    process = psutil.Process(os.getpid())
+    logging.info(f"Starting resource monitoring every {interval} second(s)...")
+
+    def log_usage():
+        while True:
+            cpu_usage = process.cpu_percent(interval=None)
+            memory_info = process.memory_info()
+            rss_memory_mb = memory_info.rss / (1024 * 1024)
+            if cpu_usage > threshold:
+                logging.warning(f"High CPU usage: {cpu_usage:.2f}% - Memory usage: {rss_memory_mb:.2f} MB")
+
+            time.sleep(interval)
+
+    threading.Thread(target=log_usage, daemon=True).start()
 
 
 # Solve Task Assignment
@@ -107,8 +127,8 @@ def solve_task_assignment(tasks: List[Dict[str, Any]], agents: List[Dict[str, An
     # Solve
     search_parameters = pywrapcp.DefaultRoutingSearchParameters()
     search_parameters.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
-    search_parameters.local_search_metaheuristic = routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
-    search_parameters.time_limit.seconds = 2
+    search_parameters.local_search_metaheuristic = routing_enums_pb2.LocalSearchMetaheuristic.TABU_SEARCH
+    search_parameters.time_limit.seconds = 10
 
     solution = routing.SolveWithParameters(search_parameters)
     if not solution:
@@ -159,4 +179,10 @@ if __name__ == "__main__":
         {"id": 0, "skills": {"driver"}, "location": (12.914142, 74.856033), "availability": 120, "allowed_locations": [560001, 560002]},
         {"id": 1, "skills": {"pre_inspection"}, "location": (12.914142, 74.856033), "availability": 120, "allowed_locations": [560002]},
     ]
+
+    # Start monitoring in a separate thread
+    monitor_thread = threading.Thread(target=monitor_usage, daemon=True)
+    monitor_thread.start()
+
+    # Run the main task assignment function
     solve_task_assignment(tasks, agents)
