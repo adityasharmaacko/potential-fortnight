@@ -55,6 +55,9 @@ def solve_task_assignment(tasks: List[Dict[str, Any]], agents: List[Dict[str, An
     # Build Distance Matrix
     distance_matrix = build_distance_matrix(locations)
 
+    # log distance matrix
+    logging.info(f"Distance Matrix: {distance_matrix}")
+
     # Initialize Model
     num_agents = len(agents)
     num_locations = len(locations)
@@ -97,7 +100,7 @@ def solve_task_assignment(tasks: List[Dict[str, Any]], agents: List[Dict[str, An
                 routing.VehicleVar(manager.NodeToIndex(task_index)).RemoveValue(agent_index)
 
     # Allow Unassigned Tasks with Penalty
-    penalty = 1000
+    penalty = 5000
     for task_index in range(num_agents, num_locations):
         routing.AddDisjunction([manager.NodeToIndex(task_index)], penalty)
 
@@ -105,7 +108,7 @@ def solve_task_assignment(tasks: List[Dict[str, Any]], agents: List[Dict[str, An
     search_parameters = pywrapcp.DefaultRoutingSearchParameters()
     search_parameters.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
     search_parameters.local_search_metaheuristic = routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
-    search_parameters.time_limit.seconds = 2
+    search_parameters.time_limit.seconds = 10
 
     solution = routing.SolveWithParameters(search_parameters)
     if not solution:
@@ -132,7 +135,7 @@ def solve_task_assignment(tasks: List[Dict[str, Any]], agents: List[Dict[str, An
 
         logging.info(
             f"Agent {agent_index}: Assigned Tasks: {route}, "
-            f"Total Distance: {total_distance:.2f} km, Total Duration: {total_duration} min"
+            f"Total Distance: {total_distance:.2f} km, Total Duration: {total_duration} min "
             f"End Location: {locations[manager.IndexToNode(previous_index)]}"
         )
 
@@ -150,9 +153,10 @@ if __name__ == "__main__":
     tasks = [
         {"id": 0, "skill": "driver", "location": (12.971598, 77.594566), "pincode": 560001, "duration": 50},
         {"id": 1, "skill": "driver", "location": (12.295810, 76.639381), "pincode": 560002, "duration": 50},
-        {"id": 2, "skill": "driver", "location": (13.082680, 80.270721), "pincode": 560002, "duration": 50},
+        {"id": 2, "skill": "pre_inspection", "location": (13.082680, 80.270721), "pincode": 560002, "duration": 50},
     ]
     agents = [
         {"id": 0, "skills": {"driver"}, "location": (12.914142, 74.856033), "availability": 120, "allowed_locations": [560001]},
+        {"id": 1, "skills": {"pre_inspection"}, "location": (12.914142, 74.856033), "availability": 120, "allowed_locations": [560002]},
     ]
     solve_task_assignment(tasks, agents)
