@@ -167,11 +167,6 @@ Why This Repository?
 -   **AI-Powered**: Utilizes advanced optimization techniques to provide efficient solutions.
 -   **Modular and Scalable**: Easily extendable to meet the needs of larger, more complex scenarios.
 
-License
--------
-
-This project is open-source and available under the MIT License.
-
 Contact
 -------
 
